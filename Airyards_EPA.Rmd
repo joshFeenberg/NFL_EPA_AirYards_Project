@@ -1,0 +1,56 @@
+---
+title: "Can Fun Lead to Winning in the NFL"
+author: "Josh Feenberg"
+date: "`r Sys.Date()`"
+output: html_document
+---
+When watching NFL games, I find that when teams throw deep passes, it tends to be more enjoyable to watch. I have also come to notice that the teams that air it out more tend to win the game. In this project, I will see if this is true.
+
+I will use two terms, EPA and air yards. For more information on those, read here: 
+https://www.the33rdteam.com/epa-explained/#:~:text=Expected%20Points%20Added%2C%20commonly%20referred,drive%20would%20be%20about%202.5.
+
+https://www.ftnfantasy.com/air-yards?fppg=PPR&years=2023
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning =  FALSE, message = FALSE)
+```
+ALL Data used in this project is from https://www.nflfastr.com/articles/nflfastR.html
+```{r}
+#add libraries used in the project
+library(nflfastR)
+library(tidyverse)
+library(dplyr)
+library(viridis)
+#read in data
+all_data = read_csv("https://github.com/ryurko/nflscrapR-data/blob/master/play_by_play_data/regular_season/reg_pbp_2019.csv?raw=true")
+```
+
+In the initial data filtering stage, I have selectively chosen plays for analysis, focusing on situations where the team possesses the ball and is not strategically positioned for a pass. Specifically, I have isolated pass plays that occur during the first half of the game when the team faces a 1st and 10 scenario on their own side of the field. This refined dataset enables a targeted examination of plays in situations where external factors do not necessitate a further advancement through passing, thereby providing a more focused and meaningful analysis.
+```{r}
+fdand10_ownside_fhalf <- all_data %>% 
+  # get pass plays in the first half where the home team has the ball on first and ten on their own side of the field as those are neutral pass/run situations
+  filter(game_half == "Half1" & down == 1 & ydstogo == 10 & defteam != side_of_field & home_team == posteam & play_type == 'pass') %>% 
+  mutate(score_differential)
+```
+
+Here, I conduct a linear regression to explore the correlation between air yards and EPA.
+```{r}
+lm_model_epa = lm(data = fdand10_ownside_fhalf, epa ~ air_yards)
+summary(lm_model_epa)
+```
+After analysis, a highly significant positive correlation between air yards and EPA is observed. This underscores the substantial influence of air yards on offensive performance, as indicated by Expected Points Added (EPA).
+
+
+Next, I will create a plot to visually depict the relationship between the EPA and Air Yards.
+```{r}
+ggplot(data = fdand10_ownside_fhalf, aes(x = air_yards, y = epa, color = score_differential)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_viridis_c(name = "Score Differential" ) + 
+  labs(title = "EPA vs Air Yards",
+       x = "Air Yards",
+       y = "Total EPA Added")
+```
+
+In summary, the visual representation not only reaffirms the positive correlation between EPA and air yards but also demonstrates that this relationship holds true irrespective of point differentials. This insight underscores the potential impact of exciting plays on a team's overall offensive success, suggesting that strategic use of air yards contributes significantly to a team's performance, regardless of the game's score differential.
+
